@@ -1,4 +1,4 @@
-# Working status board
+# Work status board
 A project to display my status on my door so my family know whether they can disturb me or not - initially a present from my daughter.
 
 ## Setup
@@ -7,7 +7,7 @@ A project to display my status on my door so my family know whether they can dis
 * Open the sketch in the Arduino IDE
 * Update `TestESP8266.ino` so your pins are correct
 * Set the board to whichever WEMOS board you have. I've tested this on the original D1 R1 and on the D1 Mini
-* Wire up the board
+* Wire up the board (schematic coming soon)
 * Open the serial monitor and set it to 115200bps (unless you changed the constant in the sketch)
 * Upload the sketch
 
@@ -23,7 +23,7 @@ There are 3 ways to authenticate:
 
 1. Pass a header called `AuthKey` with the value you put in `secrets.h`.
 1. Pass the secret in as a query string argument called `AuthKey` to the url (e.g. `http://192.168.0.105/onACall?AuthKey=<MySecretKey>`)
-1. Login - the key is stored as a cookie. You can logout from `\` if you're logged in
+1. Login - the key is stored as a cookie. You can logout from `/` if you're logged in
 
 Setting a light is a matter of `GET`ting one of the following:
 * `/onACall` - turns on the orange LED
