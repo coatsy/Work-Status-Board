@@ -4,20 +4,23 @@
 #include <ESP8266mDNS.h>
 #include "secrets.h"
 
-#define RED_LED D1
-#define ORANGE_LED D2
-#define YELLOW_LED D3
-#define GREEN_LED D4
+#define RED_LED D10
+#define ORANGE_LED D11
+#define YELLOW_LED D12
+#define GREEN_LED D13
 #define SERIAL_BAUD_RATE 115200
 #define DELAY_TIME 500
 #define ON 1
 #define OFF 0
 
 const char *ssid = SSID;
-const char *password = PWD;
+const char *password = WPA_KEY;
 
-const char *authHeaderName = "AuthHeader";
+const char *authHeaderName = "AuthKey";
 const char *authHeaderValue = AUTH_SECRET;
+
+const char *loginUserName = LOGIN_USER_NAME;
+const char *loginPassword = LOGIN_PASSWORD;
 
 const char *APP_TITLE = "Work Status Board";
 
@@ -55,7 +58,7 @@ void setup()
   while (WiFi.status() != WL_CONNECTED)
   {
     cylon();
-    Serial.print("."  );
+    Serial.print(".");
   }
 
   Serial.println("");
@@ -70,6 +73,7 @@ void setup()
   }
 
   server.on("/", handleRoot);
+  server.on("/login", handleLogin);
   server.on("/onACall", handleOnACall);
   server.on("/coding", handleCoding);
   server.on("/workingHard", handleWorkingHard);
@@ -77,6 +81,12 @@ void setup()
   server.on("/allOff", handleAllOff);
 
   server.onNotFound(handleNotFound);
+
+  //here the list of headers to be recorded
+  const char *headerkeys[] = {authHeaderName, "Cookie"};
+  size_t headerkeyssize = sizeof(headerkeys) / sizeof(char *);
+  //ask server to track these headers
+  server.collectHeaders(headerkeys, headerkeyssize);
 
   server.begin();
   Serial.println("HTTP server started");
@@ -93,36 +103,130 @@ void handleRoot()
   message += "</H1>";
   message += "<H2>Current Status</H2>";
   message += currentStateHTML();
+  message += "<HR />";
+  if (checkAuth())
+  {
+    message += validEndpoints();
+  }
+  else
+  {
+    message += loginMessage();
+  }
+  message += "<HR />";
+  message += "</BODY></HTML>";
+  server.sendHeader("Cache-Control", "no-cache");
+  server.send(200, "text/html", message);
+  Serial.println("/");
+}
+
+String loginMessage()
+{
+  String message = "";
+  message += "<p>Click <a href=\"/login\">here</a> to login and update current status</p>";
+  return message;
+}
+
+String validEndpoints()
+{
+  String message = "";
   message += "<H2>Valid Endpoints</H2><UL>";
   message += "<LI><A href=\"onACall\">On a call</LI>";
   message += "<LI><A href=\"coding\">Coding</LI>";
   message += "<LI><A href=\"workingHard\">Working Hard</LI>";
   message += "<LI><A href=\"hardlyWorking\">Hardly Working</LI>";
   message += "<LI><A href=\"allOff\">All Off</LI>";
-  message += "<HR />";
-  message += "</BODY></HTML>";
-  server.send(200, "text/html", message);
-  Serial.println("/");
+  message += "</UL><HR />";
+  message += "<p><a href=\"/login?DISCONNECT=TRUE\">Logout</a></p>";
+
+  return message;
 }
 
 bool checkAuth()
 {
-  if (!server.hasHeader(authHeaderName))
+  bool isAuthenticated = false;
+  // can be authenticated in 3 different ways
+  // Header set with valid key
+  if (server.hasHeader(authHeaderName) && server.header(authHeaderName) == authHeaderValue)
   {
-    Serial.println("No Auth Header Set");
-    return false;
+    isAuthenticated = true;
   }
-  if (server.header(authHeaderName) != authHeaderValue)
+
+  // Key passed in url as arg
+  if (server.hasArg(authHeaderName) && server.arg(authHeaderName) == authHeaderValue)
   {
-    Serial.println("Invalid Auth Header Value");
-    return false;
+    isAuthenticated = true;
   }
-  return true;
+
+  // Logged in and auth key set as cookie
+  if (!isAuthenticated && server.hasHeader("Cookie"))
+  {
+    String cookie = server.header("Cookie");
+    String lookFor = authHeaderName;
+    lookFor += "=";
+    lookFor += authHeaderValue;
+    if (cookie.indexOf(lookFor) != -1)
+    {
+      isAuthenticated = true;
+    }
+  }
+
+  return isAuthenticated;
+}
+
+//login page, also called for disconnect
+void handleLogin()
+{
+  String msg;
+
+  if (server.hasArg("DISCONNECT"))
+  {
+    server.sendHeader("Location", "/");
+    server.sendHeader("Cache-Control", "no-cache");
+    String notLoggedInCookie = authHeaderName; 
+    notLoggedInCookie += "=";    
+    server.sendHeader("Set-Cookie", notLoggedInCookie);
+    server.send(301);
+    return;
+  }
+
+  if (server.hasArg("USERNAME") && server.hasArg("PASSWORD"))
+  {
+    if (server.arg("USERNAME") == loginUserName && server.arg("PASSWORD") == loginPassword)
+    {
+      server.sendHeader("Location", "/");
+      server.sendHeader("Cache-Control", "no-cache");
+      String loggedInCookie = authHeaderName; 
+      loggedInCookie += "=";
+      loggedInCookie += authHeaderValue;
+      server.sendHeader("Set-Cookie", loggedInCookie);
+      server.send(301);
+      Serial.println("Log in Successful");
+      return;
+    }
+
+    msg = "Wrong username/password! try again.";
+    Serial.println("Log in Failed");
+  }
+  String content = "<html><body><h1>Login to ";
+  content += APP_TITLE;
+  content += "</h1><form action='/login' method='POST'>";
+  content += "User:<input type='text' name='USERNAME' placeholder='user name'><br>";
+  content += "Password:<input type='password' name='PASSWORD' placeholder='password'><br>";
+  content += "<input type='submit' name='SUBMIT' value='Submit'></form>" + msg + "<br>";
+  content += "You also can go <a href='/'>home</a> to see status without logging in.</body></html>";
+  server.send(200, "text/html", content);
 }
 
 void send401()
 {
-  server.send(401, "text/plain", "Set the Auth Header to update");
+  server.send(401, "text/plain", "Authenticate to update status");
+}
+
+void gotoRoot()
+{
+  server.sendHeader("Location", "/");
+  server.sendHeader("Cache-Control", "no-cache");
+  server.send(302);
 }
 
 void handleAllOff()
@@ -135,7 +239,7 @@ void handleAllOff()
   {
     allOff();
     Serial.println("All Off");
-    server.send(200, "application/json", "[]");
+    gotoRoot();
   }
 }
 
@@ -149,7 +253,7 @@ void handleOnACall()
   {
     onACall();
     Serial.println("On a Call");
-    server.send(200, "application/json", "[]");
+    gotoRoot();
   }
 }
 
@@ -162,7 +266,7 @@ void handleCoding()
   else
   {
     coding();
-    server.send(200, "application/json", "[]");
+    gotoRoot();
   }
 }
 
@@ -176,7 +280,7 @@ void handleWorkingHard()
   {
     workingHard();
     Serial.println("Working Hard");
-    server.send(200, "application/json", "[]");
+    gotoRoot();
   }
 }
 
@@ -190,7 +294,7 @@ void handleHardlyWorking()
   {
     hardlyWorking();
     Serial.println("Hardly Working");
-    server.send(200, "application/json", "[]");
+    gotoRoot();
   }
 }
 
