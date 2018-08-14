@@ -11,10 +11,10 @@ A project to display my status on my door so my family know whether they can dis
     * note that although an Arduino Uno is shown in the pic, you want to use a WEMOS D1 R1 or D1 Mini, as you need the wireless bits)
     * note also that although I've displayed the LEDs as being on the breadboard, they're actually mounted on a separate backing for the project itself
 
-<figure>
-    <img src="./images/work-status-board-bb.png" alt="Wiring Diagram" />
-    <figcaption>Basic wiring diagram</figcaption>
-</figure>
+    <figure>
+        <img src="./images/work-status-board-bb.png" alt="Wiring Diagram" />
+        <figcaption>Basic wiring diagram</figcaption>
+    </figure>
 
 * Open the serial monitor and set it to 115200bps (unless you changed the constant in the sketch)
 * Upload the sketch
