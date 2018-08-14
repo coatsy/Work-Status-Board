@@ -7,7 +7,15 @@ A project to display my status on my door so my family know whether they can dis
 * Open the sketch in the Arduino IDE
 * Update `TestESP8266.ino` so your pins are correct
 * Set the board to whichever WEMOS board you have. I've tested this on the original D1 R1 and on the D1 Mini
-* Wire up the board (schematic coming soon)
+* Wire up the board 
+    * note that although an Arduino Uno is shown in the pic, you want to use a WEMOS D1 R1 or D1 Mini, as you need the wireless bits)
+    * note also that although I've displayed the LEDs as being on the breadboard, they're actually mounted on a separate backing for the project itself
+
+<figure>
+    <img src="./images/work-status-board-bb.png" alt="Wiring Diagram" />
+    <figcaption>Basic wiring diagram</figcaption>
+</figure>
+
 * Open the serial monitor and set it to 115200bps (unless you changed the constant in the sketch)
 * Upload the sketch
 
